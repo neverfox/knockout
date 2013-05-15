@@ -175,16 +175,20 @@
 
         var bindingHandlerThatControlsDescendantBindings;
         if (bindings) {
+            var getValueAccessor = function(bindingKey) {
+                    return bindings[bindingKey];
+                };
+
             // Use of allBindings as a function is maintained for backwards compatibility, but its use is deprecated
             function allBindings() {
                 return ko.utils.objectMap(bindings, evaluateValueAccessor);
             }
             // The following is the 3.x allBindings API
             allBindings['get'] = function(key) {
-                return bindings[key] && evaluateValueAccessor(bindings[key]);
+                return bindings[key] && evaluateValueAccessor(getValueAccessor(key));
             };
             allBindings['has'] = function(key) {
-                return key in bindings;
+                return bindings[key];
             };
 
             // First put the bindings into the right order
@@ -202,7 +206,7 @@
                 ko.dependencyDetection.ignore(function() {
                     var handlerInitFn = bindingHandler["init"];
                     if (typeof handlerInitFn == "function") {
-                        var initResult = handlerInitFn(node, bindings[bindingKey], allBindings, bindingContext['$data'], bindingContext);
+                        var initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, bindingContext['$data'], bindingContext);
 
                         // If this binding handler claims to control descendant bindings, make a note of this
                         if (initResult && initResult['controlsDescendantBindings']) {
@@ -218,7 +222,7 @@
                     function() {
                         var handlerUpdateFn = bindingHandler["update"];
                         if (typeof handlerUpdateFn == "function") {
-                            handlerUpdateFn(node, bindings[bindingKey], allBindings, bindingContext['$data'], bindingContext);
+                            handlerUpdateFn(node, getValueAccessor(bindingKey), allBindings, bindingContext['$data'], bindingContext);
                         }
                     },
                     null,
@@ -240,7 +244,7 @@
             return ko.utils.domData.get(node, storedBindingContextDomDataKey);
     }
 
-    function getBindingContext(viewModelOrBindingContext, options) {
+    function getBindingContext(viewModelOrBindingContext) {
         return viewModelOrBindingContext && (viewModelOrBindingContext instanceof ko.bindingContext)
             ? viewModelOrBindingContext
             : new ko.bindingContext(ko.utils.peekObservable(viewModelOrBindingContext));
@@ -267,7 +271,28 @@
             throw new Error("ko.applyBindings: first parameter should be your view model; second parameter should be a DOM node");
         rootNode = rootNode || window.document.body; // Make "rootNode" parameter optional
 
-        applyBindingsToNodeAndDescendantsInternal(getBindingContext(viewModelOrBindingContext), rootNode, true);
+        if (ko.isObservable(viewModelOrBindingContext) && rootNode.nodeType === 1) {
+            // When applying an observable view model using ko.applyBindings, treat the given node as a template
+            var savedNode = ko.cleanNode(rootNode.cloneNode(true)),
+                isFirstRender = true,
+                dispose = function() {
+                    computed.dispose();
+                },
+                computed = ko.dependentObservable(function() {
+                    if (!isFirstRender) {
+                        ko.utils.domNodeDisposal.removeDisposeCallback(rootNode, dispose);
+                        ko.cleanNode(rootNode);
+                        var newRootNode = savedNode.cloneNode(true);
+                        rootNode.parentNode.replaceChild(newRootNode, rootNode);
+                        rootNode = newRootNode;
+                    }
+                    isFirstRender = false;
+                    ko.utils.domNodeDisposal.addDisposeCallback(rootNode, dispose);
+                    applyBindingsToNodeAndDescendantsInternal(new ko.bindingContext(viewModelOrBindingContext()), rootNode, true);
+                });
+        } else {
+            applyBindingsToNodeAndDescendantsInternal(getBindingContext(viewModelOrBindingContext), rootNode, true);
+        }
     };
 
     // Retrieving binding context from arbitrary nodes
