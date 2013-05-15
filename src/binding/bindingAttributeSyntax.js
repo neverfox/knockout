@@ -240,7 +240,7 @@
             return ko.utils.domData.get(node, storedBindingContextDomDataKey);
     }
 
-    function getBindingContext(viewModelOrBindingContext, options) {
+    function getBindingContext(viewModelOrBindingContext) {
         return viewModelOrBindingContext && (viewModelOrBindingContext instanceof ko.bindingContext)
             ? viewModelOrBindingContext
             : new ko.bindingContext(ko.utils.peekObservable(viewModelOrBindingContext));
@@ -267,7 +267,28 @@
             throw new Error("ko.applyBindings: first parameter should be your view model; second parameter should be a DOM node");
         rootNode = rootNode || window.document.body; // Make "rootNode" parameter optional
 
-        applyBindingsToNodeAndDescendantsInternal(getBindingContext(viewModelOrBindingContext), rootNode, true);
+        if (ko.isObservable(viewModelOrBindingContext) && rootNode.nodeType === 1) {
+            // When applying an observable view model using ko.applyBindings, treat the given node as a template
+            var savedNode = ko.cleanNode(rootNode.cloneNode(true)),
+                isFirstRender = true,
+                dispose = function() {
+                    computed.dispose();
+                },
+                computed = ko.dependentObservable(function() {
+                    if (!isFirstRender) {
+                        ko.utils.domNodeDisposal.removeDisposeCallback(rootNode, dispose);
+                        ko.cleanNode(rootNode);
+                        var newRootNode = savedNode.cloneNode(true);
+                        rootNode.parentNode.replaceChild(newRootNode, rootNode);
+                        rootNode = newRootNode;
+                    }
+                    isFirstRender = false;
+                    ko.utils.domNodeDisposal.addDisposeCallback(rootNode, dispose);
+                    applyBindingsToNodeAndDescendantsInternal(new ko.bindingContext(viewModelOrBindingContext()), rootNode, true);
+                });
+        } else {
+            applyBindingsToNodeAndDescendantsInternal(getBindingContext(viewModelOrBindingContext), rootNode, true);
+        }
     };
 
     // Retrieving binding context from arbitrary nodes
