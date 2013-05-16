@@ -250,7 +250,7 @@ describe('Binding dependencies', function() {
 
         it('Updates to an observable view model should update all child contexts (including values copied from the parent)', function() {
             ko.bindingHandlers.setChildContext = {
-                init: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                init: function(element, valueAccessor, allBindingsAccessor, bindingContext) {
                     ko.applyBindingsToDescendants(
                         bindingContext.createChildContext(function() { return ko.utils.unwrapObservable(valueAccessor()) }),
                         element);
@@ -274,7 +274,7 @@ describe('Binding dependencies', function() {
 
         it('Updates to an observable view model should update all extended contexts (including values copied from the parent)', function() {
             ko.bindingHandlers.withProperties = {
-                init: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                init: function(element, valueAccessor, allBindingsAccessor, bindingContext) {
                     var innerBindingContext = bindingContext.extend(valueAccessor);
                     ko.applyBindingsToDescendants(innerBindingContext, element);
                     return { controlsDescendantBindings : true };

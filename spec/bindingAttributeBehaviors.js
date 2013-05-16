@@ -4,9 +4,9 @@ describe('Binding attribute syntax', function() {
     it('applyBindings should accept no parameters and then act on document.body with undefined model', function() {
         var didInit = false;
         ko.bindingHandlers.test = {
-            init: function (element, valueAccessor, allBindings, viewModel) {
+            init: function (element, valueAccessor, allBindings, bindingContext) {
                 expect(element.id).toEqual("testElement");
-                expect(viewModel).toEqual(undefined);
+                expect(bindingContext['$data']).toEqual(undefined);
                 didInit = true;
             }
         };
@@ -22,9 +22,9 @@ describe('Binding attribute syntax', function() {
         var didInit = false;
         var suppliedViewModel = {};
         ko.bindingHandlers.test = {
-            init: function (element, valueAccessor, allBindings, viewModel) {
+            init: function (element, valueAccessor, allBindings, bindingContext) {
                 expect(element.id).toEqual("testElement");
-                expect(viewModel).toEqual(suppliedViewModel);
+                expect(bindingContext['$data']).toEqual(suppliedViewModel);
                 didInit = true;
             }
         };
@@ -40,9 +40,9 @@ describe('Binding attribute syntax', function() {
         var didInit = false;
         var suppliedViewModel = {};
         ko.bindingHandlers.test = {
-            init: function (element, valueAccessor, allBindings, viewModel) {
+            init: function (element, valueAccessor, allBindings, bindingContext) {
                 expect(element.id).toEqual("testElement");
-                expect(viewModel).toEqual(suppliedViewModel);
+                expect(bindingContext['$data']).toEqual(suppliedViewModel);
                 didInit = true;
             }
         };
@@ -170,7 +170,7 @@ describe('Binding attribute syntax', function() {
 
     it('Should be able to extend a binding context, adding new custom properties, without mutating the original binding context', function() {
         ko.bindingHandlers.addCustomProperty = {
-            init: function(element, valueAccessor, allBindings, viewModel, bindingContext) {
+            init: function(element, valueAccessor, allBindings, bindingContext) {
                 ko.applyBindingsToDescendants(bindingContext.extend({ '$customProp': 'my value' }), element);
                 return { controlsDescendantBindings : true };
             }
@@ -189,7 +189,7 @@ describe('Binding attribute syntax', function() {
 
     it('Binding contexts should inherit any custom properties from ancestor binding contexts', function() {
         ko.bindingHandlers.addCustomProperty = {
-            init: function(element, valueAccessor, allBindings, viewModel, bindingContext) {
+            init: function(element, valueAccessor, allBindings, bindingContext) {
                 ko.applyBindingsToDescendants(bindingContext.extend({ '$customProp': 'my value' }), element);
                 return { controlsDescendantBindings : true };
             }
@@ -306,7 +306,7 @@ describe('Binding attribute syntax', function() {
 
     it('Should be able to set and access correct context in custom containerless binding', function() {
         ko.bindingHandlers.bindChildrenWithCustomContext = {
-            init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            init: function (element, valueAccessor, allBindings, bindingContext) {
                 var innerContext = bindingContext.createChildContext({ myCustomData: 123 });
                 ko.applyBindingsToDescendants(innerContext, element);
                 return { 'controlsDescendantBindings': true };
@@ -323,7 +323,7 @@ describe('Binding attribute syntax', function() {
     it('Should be able to set and access correct context in nested containerless binding', function() {
         delete ko.bindingHandlers.nonexistentHandler;
         ko.bindingHandlers.bindChildrenWithCustomContext = {
-            init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            init: function (element, valueAccessor, allBindings, bindingContext) {
                 var innerContext = bindingContext.createChildContext({ myCustomData: 123 });
                 ko.applyBindingsToDescendants(innerContext, element);
                 return { 'controlsDescendantBindings': true };
@@ -339,7 +339,7 @@ describe('Binding attribute syntax', function() {
 
     it('Should be able to access custom context variables in child context', function() {
         ko.bindingHandlers.bindChildrenWithCustomContext = {
-            init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            init: function (element, valueAccessor, allBindings, bindingContext) {
                 var innerContext = bindingContext.createChildContext({ myCustomData: 123 });
                 innerContext.customValue = 'xyz';
                 ko.applyBindingsToDescendants(innerContext, element);

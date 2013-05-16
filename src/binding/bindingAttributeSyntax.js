@@ -271,7 +271,7 @@
                 ko.dependencyDetection.ignore(function() {
                     var handlerInitFn = bindingHandler["init"];
                     if (typeof handlerInitFn == "function") {
-                        var initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, bindingContext['$data'], bindingContext);
+                        var initResult = handlerInitFn(node, getValueAccessor(bindingKey), allBindings, bindingContext, bindingContext);
 
                         // If this binding handler claims to control descendant bindings, make a note of this
                         if (initResult && initResult['controlsDescendantBindings']) {
@@ -287,7 +287,7 @@
                     function() {
                         var handlerUpdateFn = bindingHandler["update"];
                         if (typeof handlerUpdateFn == "function") {
-                            handlerUpdateFn(node, getValueAccessor(bindingKey), allBindings, bindingContext['$data'], bindingContext);
+                            handlerUpdateFn(node, getValueAccessor(bindingKey), allBindings, bindingContext, bindingContext);
                         }
                     },
                     null,

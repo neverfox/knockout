@@ -175,7 +175,7 @@
             }
             return { 'controlsDescendantBindings': true };
         },
-        'update': function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+        'update': function (element, valueAccessor, allBindings, bindingContext) {
             var templateName = ko.utils.unwrapObservable(valueAccessor()),
                 options = {},
                 shouldDisplay = true,

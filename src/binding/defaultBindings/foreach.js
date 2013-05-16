@@ -27,11 +27,11 @@ ko.bindingHandlers['foreach'] = {
             };
         };
     },
-    'init': function(element, valueAccessor, allBindings, viewModel, bindingContext) {
+    'init': function(element, valueAccessor, allBindings, bindingContext) {
         return ko.bindingHandlers['template']['init'](element, ko.bindingHandlers['foreach'].makeTemplateValueAccessor(valueAccessor));
     },
-    'update': function(element, valueAccessor, allBindings, viewModel, bindingContext) {
-        return ko.bindingHandlers['template']['update'](element, ko.bindingHandlers['foreach'].makeTemplateValueAccessor(valueAccessor), allBindings, viewModel, bindingContext);
+    'update': function(element, valueAccessor, allBindings, bindingContext) {
+        return ko.bindingHandlers['template']['update'](element, ko.bindingHandlers['foreach'].makeTemplateValueAccessor(valueAccessor), allBindings, bindingContext);
     }
 };
 ko.expressionRewriting.bindingRewriteValidators['foreach'] = false; // Can't rewrite control flow bindings
