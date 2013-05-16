@@ -149,10 +149,9 @@ describe('Binding dependencies', function() {
         expect(lastBoundValueUpdate).toEqual("third value");
 
         // update view model with brand-new property
-        /* TODO: fix observable view models
         vm({ myProp: function() {return "fourth value"; }});
         expect(lastBoundValueInit).toEqual("fourth value");
-        expect(lastBoundValueUpdate).toEqual("fourth value");*/
+        expect(lastBoundValueUpdate).toEqual("fourth value");
     });
 
     it('Should not update sibling bindings if a binding is updated', function() {
@@ -220,6 +219,81 @@ describe('Binding dependencies', function() {
         expect(latestValue).toEqual(1);
         observable1(2);
         expect(latestValue).toEqual(2);
+    });
+
+    describe('Observable view models', function() {
+        it('Should be able to update bindings (including callbacks) using an observable view model', function() {
+            testNode.innerHTML = "<input data-bind='value:someProp' />";
+            var vm = ko.observable({ someProp: 'My prop value' });
+            ko.applyBindings(vm, testNode.childNodes[0]);
+
+            expect(testNode.childNodes[0].value).toEqual("My prop value");
+
+            // a change to the input value should be written to the model
+            testNode.childNodes[0].value = "some user-entered value";
+            ko.utils.triggerEvent(testNode.childNodes[0], "change");
+            expect(vm().someProp).toEqual("some user-entered value");
+
+            // set the view-model to a new object
+            vm({ someProp: ko.observable('My new prop value') });
+            expect(testNode.childNodes[0].value).toEqual("My new prop value");
+
+            // a change to the input value should be written to the new model
+            testNode.childNodes[0].value = "some new user-entered value";
+            ko.utils.triggerEvent(testNode.childNodes[0], "change");
+            expect(vm().someProp()).toEqual("some new user-entered value");
+
+            // clear the element and the view-model (shouldn't be any errors)
+            ko.removeNode(testNode.childNodes[0]);
+            vm(null);
+        });
+
+        it('Updates to an observable view model should update all child contexts (including values copied from the parent)', function() {
+            ko.bindingHandlers.setChildContext = {
+                init: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                    ko.applyBindingsToDescendants(
+                        bindingContext.createChildContext(function() { return ko.utils.unwrapObservable(valueAccessor()) }),
+                        element);
+                    return { controlsDescendantBindings : true };
+                }
+            };
+
+            testNode.innerHTML = "<div data-bind='setChildContext:obj1'><span data-bind='text:prop1'></span><span data-bind='text:$root.prop2'></span></div>";
+            var vm = ko.observable({obj1: {prop1: "First "}, prop2: "view model"});
+            ko.applyBindings(vm, testNode.childNodes[0]);
+            expect(testNode).toContainText("First view model");
+
+            // change view model to new object
+            vm({obj1: {prop1: "Second view "}, prop2: "model"});
+            expect(testNode).toContainText("Second view model");
+
+            // change it again
+            vm({obj1: {prop1: "Third view model"}, prop2: ""});
+            expect(testNode).toContainText("Third view model");
+        });
+
+        it('Updates to an observable view model should update all extended contexts (including values copied from the parent)', function() {
+            ko.bindingHandlers.withProperties = {
+                init: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                    var innerBindingContext = bindingContext.extend(valueAccessor);
+                    ko.applyBindingsToDescendants(innerBindingContext, element);
+                    return { controlsDescendantBindings : true };
+                }
+            };
+
+            testNode.innerHTML = "<div data-bind='withProperties: obj1'><span data-bind='text:prop1'></span><span data-bind='text:prop2'></span></div>";
+            var vm = ko.observable({obj1: {prop1: "First "}, prop2: "view model"});
+            ko.applyBindings(vm, testNode.childNodes[0]);
+            expect(testNode).toContainText("First view model");
+
+            // ch ange view model to new object
+            vm({obj1: {prop1: "Second view "}, prop2: "model"});
+            expect(testNode).toContainText("Second view model");
+
+            // change it again
+            vm({obj1: {prop1: "Third view model"}, prop2: ""});
+            expect(testNode).toContainText("Third view model");
+        });
     });
 
     describe('Order', function() {
