@@ -16,8 +16,8 @@ ko.bindingHandlers['options'] = {
         var caption = {};
         var previousSelectedValues;
         if (element.multiple) {
-            previousSelectedValues = ko.utils.arrayMap(element.selectedOptions || ko.utils.arrayFilter(element.childNodes, function (node) {
-                    return node.tagName && (ko.utils.tagNameLower(node) === "option") && node.selected;
+            previousSelectedValues = ko.utils.arrayMap(element['selectedOptions'] || ko.utils.arrayFilter(element.options, function (node) {
+                    return node.selected;
                 }), function (node) {
                     return ko.selectExtensions.readValue(node);
                 });
@@ -77,20 +77,31 @@ ko.bindingHandlers['options'] = {
             return [option];
         }
 
-        var countSelectionsRetained = 0;
         function setSelectionCallback(arrayEntry, newOptions) {
             // IE6 doesn't like us to assign selection to OPTION nodes before they're added to the document.
             // That's why we first added them without selection. Now it's time to set the selection.
             if (previousSelectedValues) {
                 var isSelected = ko.utils.arrayIndexOf(previousSelectedValues, ko.selectExtensions.readValue(newOptions[0])) >= 0;
                 ko.utils.setOptionNodeSelectionState(newOptions[0], isSelected);
-                if (isSelected) {
-                    countSelectionsRetained++;
-                }
             }
         }
 
         ko.utils.setDomNodeChildrenFromArrayMapping(element, filteredArray, optionForArrayItem, null, setSelectionCallback);
+
+        // Determine if the selection changed as a result of updating the options list
+        var selectionChanged;
+        if (element.multiple) {
+            // For a multiple select box, compare the new selection count to the previous one
+            // But if nothing was selected before, the selection can't have changed
+            selectionChanged = previousSelectedValues &&
+                (element['selectedOptions'] || ko.utils.arrayFilter(element.options, function (node) { return node.selected; })).length < previousSelectedValues.length;
+        } else {
+            // For a single select box, compare the current value to the previous value
+            // But if nothing was selected before or nothing is selected now, just look for a change in selection
+            selectionChanged = (previousSelectedValues && element.selectedIndex >= 0)
+                ? (ko.selectExtensions.readValue(element.options[element.selectedIndex]) !== previousSelectedValues[0])
+                : (previousSelectedValues || element.selectedIndex >= 0);
+        }
 
         // Clear previousSelectedValues so that future updates to individual objects don't get stale data
         previousSelectedValues = null;
@@ -98,7 +109,7 @@ ko.bindingHandlers['options'] = {
         // Ensure consistency between model value and selected option.
         // If the dropdown was changed so that selection is no longer the same,
         // notify the value or selectedOptions binding.
-        if (previousSelectedValues && countSelectionsRetained < previousSelectedValues.length)
+        if (selectionChanged)
             ko.dependencyDetection.ignore(ko.utils.triggerEvent, null, [element, "change"]);
 
         // Workaround for IE bug
