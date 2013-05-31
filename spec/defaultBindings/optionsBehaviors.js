@@ -161,7 +161,16 @@ describe('Binding: Options', function() {
         observable([]);
         expect(changeHandlerFireCount).toEqual(2);
 
-        // TODO: trigger change event if the selection changes by changing the value of an observable item
+        // Set observable options and select them
+        observable([ko.observable("X"), ko.observable("Y")]);
+        expect(changeHandlerFireCount).toEqual(2);
+        testNode.childNodes[0].options[0].selected = testNode.childNodes[0].options[1].selected = true;
+        expect(testNode.childNodes[0]).toHaveSelectedValues(["X","Y"]);
+
+        // Change the value of a selected item, which should deselect it and trigger a change event
+        observable()[1]("Z");
+        expect(testNode.childNodes[0]).toHaveSelectedValues(["X"]);
+        expect(changeHandlerFireCount).toEqual(3);
     });
 
     it('Should place a caption at the top of the options list and display it when the model value is undefined', function() {

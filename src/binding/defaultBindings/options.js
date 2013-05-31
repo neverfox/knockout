@@ -9,6 +9,10 @@ ko.bindingHandlers['options'] = {
         }
     },
     'update': function (element, valueAccessor, allBindings) {
+        function selectedOptions() {
+            return element['selectedOptions'] || ko.utils.arrayFilter(element.options, function (node) { return node.selected; });
+        }
+
         var previousScrollTop = element.scrollTop;
 
         var unwrappedArray = ko.utils.unwrapObservable(valueAccessor());
@@ -16,11 +20,7 @@ ko.bindingHandlers['options'] = {
         var caption = {};
         var previousSelectedValues;
         if (element.multiple) {
-            previousSelectedValues = ko.utils.arrayMap(element['selectedOptions'] || ko.utils.arrayFilter(element.options, function (node) {
-                    return node.selected;
-                }), function (node) {
-                    return ko.selectExtensions.readValue(node);
-                });
+            previousSelectedValues = ko.utils.arrayMap(selectedOptions(), ko.selectExtensions.readValue);
         } else if (element.selectedIndex >= 0) {
             previousSelectedValues = [ ko.selectExtensions.readValue(element.options[element.selectedIndex]) ];
         }
@@ -57,9 +57,11 @@ ko.bindingHandlers['options'] = {
         // The first is when the whole array is being updated directly from this binding handler.
         // The second is when an observable value for a specific array entry is updated.
         // oldOptions will be empty in the first case, but will be filled with the previously generated option in the second.
+        var itemUpdate = false;
         function optionForArrayItem(arrayEntry, index, oldOptions) {
             if (oldOptions.length) {
                 previousSelectedValues = oldOptions[0].selected && [ ko.selectExtensions.readValue(oldOptions[0]) ];
+                itemUpdate = true;
             }
             var option = document.createElement("option");
             if (arrayEntry === caption) {
@@ -83,18 +85,21 @@ ko.bindingHandlers['options'] = {
             if (previousSelectedValues) {
                 var isSelected = ko.utils.arrayIndexOf(previousSelectedValues, ko.selectExtensions.readValue(newOptions[0])) >= 0;
                 ko.utils.setOptionNodeSelectionState(newOptions[0], isSelected);
+
+                // If this option was changed from being selected during a single-item update, notify the change
+                if (itemUpdate && !isSelected)
+                    ko.dependencyDetection.ignore(ko.utils.triggerEvent, null, [element, "change"]);
             }
         }
 
         ko.utils.setDomNodeChildrenFromArrayMapping(element, filteredArray, optionForArrayItem, null, setSelectionCallback);
 
-        // Determine if the selection changed as a result of updating the options list
+        // Determine if the selection has changed as a result of updating the options list
         var selectionChanged;
         if (element.multiple) {
             // For a multiple select box, compare the new selection count to the previous one
             // But if nothing was selected before, the selection can't have changed
-            selectionChanged = previousSelectedValues &&
-                (element['selectedOptions'] || ko.utils.arrayFilter(element.options, function (node) { return node.selected; })).length < previousSelectedValues.length;
+            selectionChanged = previousSelectedValues && selectedOptions().length < previousSelectedValues.length;
         } else {
             // For a single select box, compare the current value to the previous value
             // But if nothing was selected before or nothing is selected now, just look for a change in selection
@@ -102,9 +107,6 @@ ko.bindingHandlers['options'] = {
                 ? (ko.selectExtensions.readValue(element.options[element.selectedIndex]) !== previousSelectedValues[0])
                 : (previousSelectedValues || element.selectedIndex >= 0);
         }
-
-        // Clear previousSelectedValues so that future updates to individual objects don't get stale data
-        previousSelectedValues = null;
 
         // Ensure consistency between model value and selected option.
         // If the dropdown was changed so that selection is no longer the same,
